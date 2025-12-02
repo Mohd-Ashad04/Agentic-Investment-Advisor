@@ -9,3 +9,4 @@ litellm>=0.2.0
 requests
 python-dotenv
 
+gunicorn==20.1.0
