@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Results — Agentic Investment Advisor{% endblock %}
+
+{% block content %}
+<div class="glass-card p-6">
+  <div class="flex items-start justify-between">
+    <div>
+      <h2 class="text-2xl font-bold">Recommendation</h2>
+      <p class="muted text-sm">Below is the portfolio we generated and a concise AI explanation.</p>
+    </div>
+    <div>
+      <button id="backBtn" class="px-3 py-2 rounded btn-primary">Back</button>
+    </div>
+  </div>
+
+  <div id="contentArea" class="mt-6">
+    <!-- content populated by JS -->
+    <div class="text-center muted">Loading results…</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Read last_recommend from sessionStorage and render
+function safeDestroy(chartRef) {
+  if (chartRef && typeof chartRef.destroy === 'function') {
+    try { chartRef.destroy(); } catch(e) {}
+  }
+}
+window._priceChart = window._priceChart || null;
+window._pieChart = window._pieChart || null;
+
+function buildPortfolioTable(portfolio) {
+  const holdings = portfolio?.holdings || [];
+  if (!holdings.length) return '<div class="p-4 muted">No holdings to display.</div>';
+
+  let html = `<div class="mb-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="text-lg font-semibold">Portfolio Summary</h3>
+        <div class="muted text-sm">Budget: <strong>$${(portfolio.budget||0).toLocaleString()}</strong> • Allocated: <strong>$${(portfolio.allocated||0).toLocaleString()}</strong> • Remaining: <strong>$${(portfolio.remaining||0).toLocaleString()}</strong></div>
+      </div>
+      <div class="text-sm muted">Generated: <strong>${new Date(sessionStorage.getItem('last_recommend_time') || Date.now()).toLocaleString()}</strong></div>
+    </div>
+
+    <div class="overflow-x-auto mt-3">
+    <table class="min-w-full">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="p-2 text-left muted">Ticker</th>
+          <th class="p-2 text-left muted">Shares</th>
+          <th class="p-2 text-left muted">Price</th>
+          <th class="p-2 text-left muted">Allocated</th>
+          <th class="p-2 text-left muted">Weight</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  holdings.forEach(h => {
+    const price = (h.price==null) ? '-' : Number(h.price).toFixed(2);
+    const allocated = (h.allocated==null) ? '0.00' : Number(h.allocated).toFixed(2);
+    const shares = (h.shares==null) ? '-' : h.shares;
+    const weightPct = (h.weight!=null) ? (Number(h.weight)*100).toFixed(2) + '%' : '-';
+    html += `<tr class="border-t">
+      <td class="p-2 font-medium">${h.ticker}</td>
+      <td class="p-2">${shares}</td>
+      <td class="p-2">${price}</td>
+      <td class="p-2">${allocated}</td>
+      <td class="p-2">${weightPct}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div></div>`;
+  return html;
+}
+
+function render() {
+  const raw = sessionStorage.getItem('last_recommend');
+  if (!raw) {
+    document.getElementById('contentArea').innerHTML = '<div class="p-4 muted">No result found. Please generate a recommendation from the Home page.</div>';
+    return;
+  }
+
+  let data;
+  try { data = JSON.parse(raw); } catch(e) { data = null; }
+  if (!data) {
+    document.getElementById('contentArea').innerHTML = '<div class="p-4 muted">Could not parse result data.</div>';
+    return;
+  }
+
+  // Build HTML layout for charts + table
+  document.getElementById('contentArea').innerHTML = `
+    <div id="portfolioTableArea">${buildPortfolioTable(data.portfolio || {})}</div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+      <div class="glass-card p-4">
+        <h4 class="font-semibold mb-2">Recent Price Trends</h4>
+        <div style="height:300px;"><canvas id="priceChart"></canvas></div>
+      </div>
+      <div class="glass-card p-4">
+        <h4 class="font-semibold mb-2">Allocation</h4>
+        <div style="height:300px;"><canvas id="pieChart"></canvas></div>
+      </div>
+    </div>
+
+
+  `;
+
+  // Render charts defensively
+  const prices = data.prices || {};
+  if (typeof Chart === 'undefined') {
+    document.getElementById('priceChart').parentElement.innerHTML = '<div class="muted p-3">Chart.js not loaded</div>';
+  } else {
+    // price chart
+    if (!prices || !Array.isArray(prices.dates) || prices.dates.length === 0) {
+      const ctx = document.getElementById('priceChart').getContext('2d');
+      ctx.font = '14px sans-serif';
+      ctx.fillText('No price data to display', 10, 50);
+    } else {
+      const seriesKeys = Object.keys(prices).filter(k => k !== 'dates');
+      const datasets = seriesKeys.map((k, i) => ({
+        label: k,
+        data: Array.isArray(prices[k]) ? prices[k] : [],
+        tension: 0.25,
+        fill: false
+      }));
+
+      safeDestroy(window._priceChart);
+      const ctx = document.getElementById('priceChart').getContext('2d');
+      window._priceChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: prices.dates, datasets },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    // pie chart
+    const holdings = (data.portfolio && data.portfolio.holdings) ? data.portfolio.holdings : [];
+    const labels = holdings.map(h => h.ticker);
+    let values = holdings.map(h => (h.weight!=null ? Number(h.weight) : null));
+    const sumWeights = values.reduce((s,v)=>s+(v||0),0);
+    if (sumWeights > 0 && sumWeights <= 1.001) {
+      values = values.map(v => (v!=null ? v * (data.portfolio?.budget || 1) : 0));
+    } else {
+      values = holdings.map(h => Number(h.allocated || 0));
+    }
+
+    safeDestroy(window._pieChart);
+    const pctx = document.getElementById('pieChart').getContext('2d');
+    window._pieChart = new Chart(pctx, {
+      type: 'pie',
+      data: { labels, datasets: [{ data: values }] },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+}
+
+document.getElementById('backBtn').addEventListener('click', ()=> window.location.href='/');
+
+render();
+</script>
+{% endblock %}

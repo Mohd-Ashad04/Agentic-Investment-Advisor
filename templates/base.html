@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Agentic Investment Advisor{% endblock %}</title>
+
+  <!-- Tailwind (CDN) -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root { --accent-1: #9aa2c6ff; --accent-2:#764ba2; --muted:#6b7280; }
+    body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background: linear-gradient(180deg,#0f172a 0%, #8ca0d7ff 60%); color: #7791ceff; min-height:100vh; }
+    .glass-card { background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.92)); border-radius: 14px; padding: 1rem; box-shadow: 0 10px 30px rgba(2,6,23,0.6); }
+    header .logo { font-weight: 800; color: white; letter-spacing: -0.5px; }
+    .muted { color: var(--muted); }
+    .btn-primary { background: linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border-radius: 8px; padding: 0.5rem 1rem; }
+    .card-hero { border-radius:10px; overflow:hidden; box-shadow:0 8px 30px rgba(2,6,23,0.6); }
+    .risk-badge { display:inline-block; padding:4px 10px; border-radius:999px; font-weight:600; font-size:13px; }
+    .risk-low { background:#d1fae5; color:#065f46; }
+    .risk-moderate { background:#fef3c7; color:#92400e; }
+    .risk-high { background:#fee2e2; color:#991b1b; }
+
+    @media (min-width: 768px) {
+      .container { max-width: 1100px; margin: 0 auto; }
+    }
+  </style>
+
+  {% block extra_styles %}{% endblock %}
+</head>
+<body>
+  <div class="container px-4 py-8">
+    <!-- Header -->
+    <header class="flex items-center justify-between mb-8">
+      <div class="flex items-center space-x-4">
+        
+        <div>
+          <div class="logo text-white text-lg">Agentic Investment Advisor</div>
+          <div class="text-sm text-white text-opacity-85">CrewAI • Gemini • Portfolio suggestions</div>
+        </div>
+      </div>
+
+      <nav>
+        <a href="/" class="text-white text-sm mr-4">Home</a>
+        <a href="/results" class="text-white text-sm opacity-90">Results</a>
+      </nav>
+    </header>
+
+    {% block content %}{% endblock %}
+
+    <footer class="mt-10 text-center text-white text-opacity-65">
+      
+    </footer>
+  </div>
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

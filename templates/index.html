@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Home — Agentic Investment Advisor{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <!-- Left: Input card -->
+  <div class="md:col-span-1 glass-card">
+    <h2 class="text-xl font-semibold mb-2">Create a portfolio</h2>
+    <p class="text-sm muted mb-4">Enter your budget, risk appetite and tickers. We'll fetch recent prices and propose an allocation.</p>
+
+    <div class="space-y-4">
+      <label class="text-sm font-medium">Budget (USD)</label>
+      <input id="budget" type="number" value="10000" class="input-field w-full p-2 rounded" />
+
+      <label class="text-sm font-medium">Risk Level</label>
+      <select id="risk_level" class="input-field w-full p-2 rounded">
+        <option value="low">Low</option>
+        <option value="moderate" selected>Moderate</option>
+        <option value="high">High</option>
+      </select>
+
+      <label class="text-sm font-medium">Universe (comma-separated tickers)</label>
+      <input id="universe" type="text" placeholder="AAPL,MSFT,GOOGL" class="input-field w-full p-2 rounded" />
+
+      <div class="flex items-center justify-between pt-3">
+        <div id="status" class="text-sm muted">Ready</div>
+        <div class="flex items-center space-x-2">
+          <button id="submitBtn" class="btn-primary">Get Recommendation</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <h3 class="text-sm font-semibold mb-2">Tips</h3>
+      <ul class="text-sm muted list-disc pl-5">
+        <li>Provide tickers like <code>AAPL,MSFT,AMZN</code></li>
+        <li>Low risk prioritizes stable stocks; high risk includes volatile picks</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Right: Hero card -->
+  <div class="md:col-span-2">
+    <div class="card-hero overflow-hidden relative">
+      <img src="https://images.unsplash.com/photo-1554224154-22dec7ec8818?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=7c7b6f4b8f6f6f4c8b9a" alt="hero" class="w-full h-64 object-cover">
+      <div class="p-6" style="background: linear-gradient(180deg, rgba(10,10,25,0.0) 0%, rgba(10,10,25,0.6) 100%); margin-top:-72px;">
+        <h2 class="text-3xl font-bold text-white">Smarter investing with multi-agent AI</h2>
+        <p class="text-white text-opacity-90 mt-2 max-w-2xl">We combine market data, risk assessment, and agentic portfolio generation to produce a tailored allocation — presented with charts and explanations.</p>
+
+        <div class="mt-4 flex space-x-3">
+          <div class="px-4 py-2 bg-white rounded shadow text-sm">Pilot demo</div>
+          <div class="px-4 py-2 bg-white rounded shadow text-sm">CrewAI style</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+      <div class="glass-card p-4">
+        <div class="text-sm muted">Total Models</div>
+        <div class="text-2xl font-bold">3</div>
+        <div class="text-xs muted">Market • Risk • Portfolio</div>
+      </div>
+      <div class="glass-card p-4">
+        <div class="text-sm muted">Sample Universe</div>
+        <div class="text-2xl font-bold">10</div>
+        <div class="text-xs muted">AAPL, MSFT, GOOGL ...</div>
+      </div>
+      <div class="glass-card p-4">
+        <div class="text-sm muted">Last run</div>
+        <div id="lastRun" class="text-2xl font-bold">—</div>
+        <div class="text-xs muted">Time of last recommendation</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Helper to POST and then navigate to results
+async function postRecommendation(payload) {
+  const res = await fetch('/recommend', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Server error: ${res.status} ${txt}`);
+  }
+  return res.json();
+}
+
+document.getElementById('submitBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('submitBtn');
+  const status = document.getElementById('status');
+  btn.disabled = true;
+  status.innerText = 'Fetching...';
+
+  const budget = Number(document.getElementById('budget').value) || 10000;
+  const risk_level = document.getElementById('risk_level').value || 'moderate';
+  const universe = (document.getElementById('universe').value || '').split(',').map(s=>s.trim()).filter(Boolean);
+  const payload = { budget, risk_level, universe: universe.length ? universe : null };
+
+  try {
+    const data = await postRecommendation(payload);
+    // save to sessionStorage and go to results page
+    sessionStorage.setItem('last_recommend', JSON.stringify(data));
+    sessionStorage.setItem('last_recommend_time', new Date().toISOString());
+    document.getElementById('lastRun').innerText = new Date().toLocaleString();
+    window.location.href = '/results';
+  } catch (err) {
+    console.error(err);
+    alert('Recommendation failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    status.innerText = 'Ready';
+  }
+});
+</script>
+{% endblock %}
